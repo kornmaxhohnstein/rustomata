@@ -12,6 +12,7 @@ use std::marker::PhantomData;
 use automata;
 use pmcfg;
 use tree_stack::{TreeStack, TreeStackAutomaton, TreeStackInstruction};
+use util::log_prob::Root;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum PosState<X> {
@@ -36,7 +37,7 @@ impl<X: fmt::Display> fmt::Display for PosState<X> {
 // TODO assumes that the PMCFG is monotonic on the visit-order of components
 impl<N: Clone + fmt::Debug + Ord + PartialEq + Hash,
      T: Clone + fmt::Debug + Ord + PartialEq + Hash,
-     W: Clone + fmt::Debug + Ord + PartialEq + One
+     W: Clone + fmt::Debug + Ord + PartialEq + One + Root
      > From<pmcfg::PMCFG<N, T, W>> for TreeStackAutomaton<PosState<pmcfg::PMCFGRule<N, T, W>>, T, W> {
     fn from(g: pmcfg::PMCFG<N, T, W>) -> Self {
         let mut transitions = Vec::new();
@@ -141,6 +142,8 @@ impl<N: Clone + fmt::Debug + Ord + PartialEq + Hash,
         for (r, rss) in agenda {
             j = 0;
             let mut previous_component: Vec<Option<u8>> = rss.iter().map(|_| None).collect();
+            //number of components in PMCFG::Component, equals fanout of rule
+            let fanout = r.composition.composition.len();
             for component in r.composition.composition.clone() {
                 buffer = Vec::new();
                 k = 0;
@@ -151,10 +154,8 @@ impl<N: Clone + fmt::Debug + Ord + PartialEq + Hash,
                                 transitions.push(automata::Transition {
                                     _dummy: PhantomData,
                                     word: buffer.clone(),
-                                    weight: match previous_component[usize::from(i1)] {
-                                        None => ri.weight.clone(),
-                                        Some(_) => W::one(),
-                                    },
+                                    // Instead of matching for previous component, every weight comming from a component has the weight of the fanout-th root of ri.weight
+                                    weight: ri.weight.root(fanout),
                                     instruction: match previous_component[usize::from(i1)] {
                                         None => {
                                             TreeStackInstruction::Push {

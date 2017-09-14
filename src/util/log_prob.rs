@@ -185,3 +185,14 @@ impl fmt::Display for LogProb {
         write!(f, "{}", self.probability())
     }
 }
+
+///Trait that implements the ability to take the `pow`th root of the structure
+pub trait Root{
+    fn root(&self, pow: usize)-> Self;
+}
+
+impl Root for LogProb{
+    fn root(&self, pow: usize)-> Self{
+        LogProb { value: self.value/(pow as f64)}
+    }
+}
