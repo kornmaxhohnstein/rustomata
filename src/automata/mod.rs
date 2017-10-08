@@ -64,37 +64,32 @@ pub trait Automaton<S: Clone + Debug + Eq,
 
     fn check_run(&self, run: &Vec<Transition<S, I, T, W>>) -> Option<(Configuration<S, T, W>, Vec<Transition<S, I, T, W>>)>{
 
-        match self.check(self.initial().clone(), run){
-            Some(s) => {
-                let c = Configuration {
-                    word: run_word(&run),
-                    storage: s,
-                    weight: run_weight(&run),
-                };
-                Some((c, run.clone()))
-            },
-            None => None,
+        let heap = self.check(self.initial().clone(), run);
+        if heap.is_empty(){
+            return None;
         }
+        let c = Configuration {
+            word: run_word(&run),
+            storage: heap[0].clone(),
+            weight: run_weight(&run),
+        };
+        Some((c, run.clone()))
     }
 
     //note: gives back the first configuration it finds
-    fn check<'a>(&'a self, storage: S, run: &Vec<Transition<S, I, T, W>>) -> Option<S> {
-        match run.first(){
-            Some(t) => {
-                let mut run1 = run.clone();
-                run1.remove(0);
-                for s1 in t.instruction.apply(storage.clone()) {
-                    match self.check(s1, &run1){
-                        Some(x) =>{
-                            return Some(x);
-                        },
-                        None =>(),
-                    }
+    fn check<'a>(&'a self, storage: S, run: &Vec<Transition<S, I, T, W>>) -> Vec<S> {
+        let mut storage_heap = Vec::new();
+        storage_heap.push(storage);
+        for t in run{
+            let mut new_storage_heap = Vec::new();
+            for s in storage_heap{
+                for s1 in t.instruction.apply(s) {
+                    new_storage_heap.push(s1);
                 }
-                None
-            },
-            None => Some(storage.clone()),
+            }
+            storage_heap = new_storage_heap;
         }
+        storage_heap
     }
 }
 
@@ -112,9 +107,6 @@ impl<'a, C: Ord + Clone + Debug, R: Ord + Clone + Debug, K: Hash + Eq> Iterator 
     fn next(&mut self) -> Option<(C, Vec<R>)> {
         let mut i = 0;
         while let Some((c, run)) = self.agenda.pop() {
-            /*if i%100 == 0 {
-                println!("{:?}", self.agenda.len());
-            }*/
             i = i + 1;
             for rs in self.filtered_rules.get(&(self.configuration_characteristic)(&c)) {
                 for r in rs {

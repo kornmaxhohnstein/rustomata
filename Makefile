@@ -1,22 +1,26 @@
-default: benchmark-results.txt
+default: rustomata
 .PHONY: default
 
-GRAMMAR = ./corp/create_lim_grammar.py
-NAME ?= corp/pmcfg-5
+GRAMMAR ?= example/example_mcfg.gr
 PTK ?= 5
+EQC ?= example/example_equivalence.classes
+WORDS ?= example/example_word.txt
+WORDLIMIT ?=
+NFA ?= false
 
-
-${NAME}.classes:
-	${GRAMMAR} ${NAME}
-
-${NAME}.gr:
-	${GRAMMAR} ${NAME}
+bench: benchmark-results.txt
 
 benchmark-results.txt: ${NAME}.gr ${NAME}.classes ${NAME}.txt
-	cargo run coarse-to-fine benchmark ${NAME}.gr ${NAME}.classes ${NAME}.txt ${PTK}
+	target/debug/rustomata coarse-to-fine benchmark ${GRAMMAR} ${EQC} ${WORDS} ${PTK} --wordlimit ${WORDLIMIT} --nfabool ${NFA} 2> benchmark.log
+
+rustomata: target/debug/rustomata
+
+target/debug/rustomata:
+	cargo build
 
 .PHONY: clean clean-all
 clean:
-	rm -fv ${NAME}.gr ${NAME}.classes benchmark-results.txt
+	rm -fv benchmark-results.txt benchmark.log
 
 clean-all: clean
+	rm -fv target/debug/rustomata

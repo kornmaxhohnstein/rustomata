@@ -3,6 +3,7 @@ extern crate clap;
 extern crate nom;
 extern crate num_traits;
 extern crate time;
+extern crate rand;
 
 mod automata;
 mod tree_stack;
@@ -114,6 +115,18 @@ fn main() {
                                                     .short("n")
                                                     .long("number")
                                                     .default_value("1")
+                                                    .required(false))
+                                            .arg(Arg::with_name("limit-RLB")
+                                                    .help("number of parses RLB needs to filter")
+                                                    .short("k")
+                                                    .long("limit1")
+                                                    .default_value("100")
+                                                    .required(false))
+                                            .arg(Arg::with_name("limit-PTK")
+                                                    .help("number of parses PTK needs to filter")
+                                                    .short("r")
+                                                    .long("limit2")
+                                                    .default_value("1000")
                                                     .required(false)))
                                 .subcommand(SubCommand::with_name("automaton")
                                             .about("constructs a number of push-down automata from the given context-free grammar")
@@ -170,6 +183,18 @@ fn main() {
                                                 .short("r")
                                                 .long("limit3")
                                                 .default_value("10000")
+                                                .required(false))
+                                        .arg(Arg::with_name("number-words")
+                                                .help("number of words that are filtered")
+                                                .short("w")
+                                                .long("wordlimit")
+                                                .default_value("1")
+                                                .required(false))
+                                        .arg(Arg::with_name("nfa")
+                                                .help("are we converting into nfa")
+                                                .short("b")
+                                                .long("nfabool")
+                                                .default_value("false")
                                                 .required(false)))
                     .subcommand(SubCommand::with_name("mcfg")
                                 .about("coarse-to-fine recognising using push-down and tree-stack automata")
@@ -192,6 +217,24 @@ fn main() {
                                                     .short("n")
                                                     .long("number")
                                                     .default_value("1")
+                                                    .required(false))
+                                            .arg(Arg::with_name("limit-TTS")
+                                                    .help("number of parses TTS needs to filter")
+                                                    .short("l")
+                                                    .long("limit1")
+                                                    .default_value("100")
+                                                    .required(false))
+                                            .arg(Arg::with_name("limit-RLB")
+                                                    .help("number of parses RLB needs to filter")
+                                                    .short("k")
+                                                    .long("limit2")
+                                                    .default_value("1000")
+                                                    .required(false))
+                                            .arg(Arg::with_name("limit-PTK")
+                                                    .help("number of parses PTK needs to filter")
+                                                    .short("r")
+                                                    .long("limit3")
+                                                    .default_value("10000")
                                                     .required(false)))
                                 .subcommand(SubCommand::with_name("automaton")
                                             .about("constructs a number of push-down automata from the given context-free grammar")
@@ -234,20 +277,20 @@ fn main() {
                                 .subcommand(SubCommand::with_name("parse")
                                         .arg(Arg::with_name("grammar")
                                                 .help("cfg-grammar file to use")
-                                                .index(2)
+                                                .index(1)
                                                 .required(true))
                                         .arg(Arg::with_name("size")
                                                 .help("size of pushdown")
-                                                .index(1)
+                                                .index(2)
                                                 .required(true)))
                                 .subcommand(SubCommand::with_name("automaton")
                                         .arg(Arg::with_name("grammar")
                                                 .help("cfg-grammar file to use")
-                                                .index(2)
+                                                .index(1)
                                                 .required(true))
                                         .arg(Arg::with_name("size")
                                                 .help("size of pushdown")
-                                                .index(1)
+                                                .index(2)
                                                 .required(true))))
                     .subcommand(SubCommand::with_name("tts")
                                 .about("approximates tree-stack into pushdown automata")
@@ -344,7 +387,6 @@ fn main() {
                         ("parse", Some(cfg_parse_matches)) => {
                             let grammar_file_name = cfg_parse_matches.value_of("grammar").unwrap();
                             let mut grammar_file = File::open(grammar_file_name.clone()).unwrap();
-                            let n = cfg_parse_matches.value_of("number-of-parses").unwrap().parse().unwrap();
                             let mut grammar_string = String::new();
                             let _ = grammar_file.read_to_string(&mut grammar_string);
                             let grammar: CFG<String, String, util::log_prob::LogProb> = grammar_string.parse().unwrap();
@@ -370,9 +412,9 @@ fn main() {
                             let mut corpus = String::new();
                             let _ = std::io::stdin().read_to_string(&mut corpus);
 
-                            let n1 = 100;
-                            let n2 = 10;
-                            let n3 = n;
+                            let n1 = cfg_parse_matches.value_of("limit2").unwrap().parse().unwrap();
+                            let n2 = cfg_parse_matches.value_of("limit1").unwrap().parse().unwrap();
+                            let n3 = cfg_parse_matches.value_of("number-of-parses").unwrap().parse().unwrap();
                             let mut c2 = 0;
                             let mut c3 = 0;
 
@@ -438,7 +480,6 @@ fn main() {
                         ("parse", Some(mcfg_parse_matches)) => {
                             let grammar_file_name = mcfg_parse_matches.value_of("grammar").unwrap();
                             let mut grammar_file = File::open(grammar_file_name).unwrap();
-                            let n = mcfg_parse_matches.value_of("number-of-parses").unwrap().parse().unwrap();
                             let mut grammar_string = String::new();
                             let _ = grammar_file.read_to_string(&mut grammar_string);
                             let grammar: PMCFG<String, String, util::log_prob::LogProb> = grammar_string.parse().unwrap();
@@ -468,10 +509,10 @@ fn main() {
                             let mut corpus = String::new();
                             let _ = std::io::stdin().read_to_string(&mut corpus);
 
-                            let n1 = 1000;
-                            let n2 = 100;
-                            let n3 = 10;
-                            let n4 = n;
+                            let n1 = mcfg_parse_matches.value_of("limit3").unwrap().parse().unwrap();
+                            let n2 = mcfg_parse_matches.value_of("limit2").unwrap().parse().unwrap();
+                            let n3 = mcfg_parse_matches.value_of("limit1").unwrap().parse().unwrap();
+                            let n4 = mcfg_parse_matches.value_of("number-of-parses").unwrap().parse().unwrap();
 
                             for sentence in corpus.lines() {
                                 println!("{}:\n", sentence);
@@ -552,11 +593,13 @@ fn main() {
                     let mut grammar_file = File::open(grammar_file_name).unwrap();
                     let mut grammar_string = String::new();
                     let _ = grammar_file.read_to_string(&mut grammar_string);
+                    let grammar: PMCFG<String, String, util::log_prob::LogProb> = grammar_string.parse().unwrap();
 
                     let classes_file_name = benchmark_matches.value_of("classes").unwrap();
                     let mut classes_file = File::open(classes_file_name.clone()).unwrap();
                     let mut classes_string = String::new();
                     let _ = classes_file.read_to_string(&mut classes_string);
+                    let classes: equivalence_classes::EquivalenceClass<String, String> = classes_string.parse().unwrap();
 
                     let size = benchmark_matches.value_of("topk-size").unwrap().parse::<usize>().unwrap();
 
@@ -564,13 +607,15 @@ fn main() {
                     let limit1 = benchmark_matches.value_of("limit-TTS").unwrap().parse().unwrap();
                     let limit2 = benchmark_matches.value_of("limit-RLB").unwrap().parse().unwrap();
                     let limit3 = benchmark_matches.value_of("limit-PTK").unwrap().parse().unwrap();
+                    let check = benchmark_matches.value_of("number-words").unwrap().parse().unwrap();
+                    let nfa : bool = benchmark_matches.value_of("nfa").unwrap().parse().unwrap();
 
                     let corpus_file_name = benchmark_matches.value_of("words").unwrap();
                     let mut corpus_file = File::open(corpus_file_name).unwrap();
                     let mut corpus = String::new();
                     let _ = corpus_file.read_to_string(&mut corpus);
 
-                    ctf_benchmark::benchmark(grammar_string, classes_string, size, limit, limit1, limit2, limit3, corpus)
+                    ctf_benchmark::benchmark(grammar, classes, size, limit, limit1, limit2, limit3, corpus, check, nfa)
                 },
                 _ => ()
             }
